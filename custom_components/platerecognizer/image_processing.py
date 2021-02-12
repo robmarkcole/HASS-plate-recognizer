@@ -25,6 +25,7 @@ ATTR_PLATE = "plate"
 ATTR_CONFIDENCE = "confidence"
 CONF_API_TOKEN = "api_token"
 
+DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -39,7 +40,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     entities = []
     for camera in config[CONF_SOURCE]:
         platerecognizer = PlateRecognizerEntity(
-            api_token,
+            config.get(CONF_API_TOKEN),
             camera[CONF_ENTITY_ID],
             camera.get(CONF_NAME),
         )
@@ -71,26 +72,25 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         """Process an image."""
         self._plates = []
         try:
-            response = requests.post(PLATE_READER_URL, files={"upload": image}, headers=headers).json()
+            response = requests.post(PLATE_READER_URL, files={"upload": image}, headers=self._headers).json()
+            self._plates = [{'plate': r['plate'], 'score':r['score']} for r in response['results']] 
         except Exception as exc:
             _LOGGER.error("platerecognizer error : %s", exc)
-        self._plates = [{'plate': r['plate'], 'score':r['score']} for r in response['results']] 
 
         self._state = len(self._plates)
         if self._state > 0:
             self._last_detection = dt_util.now().strftime(DATETIME_FORMAT)
 
-    def fire_vehicle_detected_event(self, vehicle):
-        """Send event."""
-        self.hass.bus.fire(
-            EVENT_VEHICLE_DETECTED,
-            {
-                ATTR_ENTITY_ID: self.entity_id,
-                ATTR_PLATE: vehicle["licenseplate"],
-                ATTR_VEHICLE_TYPE: vehicle["vehicleType"],
-                ),
-            },
-        )
+    # def fire_vehicle_detected_event(self, vehicle):
+    #     """Send event."""
+    #     self.hass.bus.fire(
+    #         EVENT_VEHICLE_DETECTED,
+    #         {
+    #             ATTR_ENTITY_ID: self.entity_id,
+    #             ATTR_PLATE: vehicle["licenseplate"],
+    #             ATTR_VEHICLE_TYPE: vehicle["vehicleType"],
+    #         },
+    #     )
 
     @property
     def camera_entity(self):
