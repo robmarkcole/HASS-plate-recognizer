@@ -1,4 +1,4 @@
-"""Person detection using Sighthound cloud service."""
+"""Vehicle detection using Plate Recognizer cloud service."""
 import logging
 import requests
 import voluptuous as vol
@@ -17,12 +17,15 @@ import homeassistant.util.dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATE_READER_URL = 'https://api.platerecognizer.com/v1/plate-reader/'
+PLATE_READER_URL = "https://api.platerecognizer.com/v1/plate-reader/"
 
 EVENT_VEHICLE_DETECTED = "platerecognizer.vehicle_detected"
 
 ATTR_PLATE = "plate"
 ATTR_CONFIDENCE = "confidence"
+ATTR_REGION_CODE = "region_code"
+ATTR_VEHICLE_TYPE = "vehicle_type"
+
 CONF_API_TOKEN = "api_token"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
@@ -51,12 +54,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class PlateRecognizerEntity(ImageProcessingEntity):
     """Create entity."""
 
-    def __init__(
-        self, api_token, camera_entity, name
-    ):
+    def __init__(self, api_token, camera_entity, name):
         """Init."""
         self._headers = {
-            'Authorization': f'Token {api_token}',
+            "Authorization": f"Token {api_token}",
         }
         self._camera = camera_entity
         if name:
@@ -65,32 +66,41 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             camera_name = split_entity_id(camera_entity)[1]
             self._name = f"platerecognizer_{camera_name}"
         self._state = None
-        self._plates = []
+        self._results = {}
+        self._vehicles = [{}]
         self._last_detection = None
 
     def process_image(self, image):
         """Process an image."""
-        self._plates = []
+        self._results = {}
+        self._vehicles = [{}]
         try:
-            response = requests.post(PLATE_READER_URL, files={"upload": image}, headers=self._headers).json()
-            self._plates = [{'plate': r['plate'], 'score':r['score']} for r in response['results']] 
+            self._results = requests.post(
+                PLATE_READER_URL, files={"upload": image}, headers=self._headers
+            ).json()["results"]
+            self._vehicles = [
+                {
+                    ATTR_PLATE: r["plate"],
+                    ATTR_CONFIDENCE: r["score"],
+                    ATTR_REGION_CODE: r["region"]["code"],
+                    ATTR_VEHICLE_TYPE: r["vehicle"]["type"],
+                }
+                for r in self._results
+            ]
         except Exception as exc:
             _LOGGER.error("platerecognizer error : %s", exc)
 
-        self._state = len(self._plates)
+        self._state = len(self._vehicles)
         if self._state > 0:
             self._last_detection = dt_util.now().strftime(DATETIME_FORMAT)
+            for vehicle in self._vehicles:
+                self.fire_vehicle_detected_event(vehicle)
 
-    # def fire_vehicle_detected_event(self, vehicle):
-    #     """Send event."""
-    #     self.hass.bus.fire(
-    #         EVENT_VEHICLE_DETECTED,
-    #         {
-    #             ATTR_ENTITY_ID: self.entity_id,
-    #             ATTR_PLATE: vehicle["licenseplate"],
-    #             ATTR_VEHICLE_TYPE: vehicle["vehicleType"],
-    #         },
-    #     )
+    def fire_vehicle_detected_event(self, vehicle):
+        """Send event."""
+        vehicle_copy = vehicle.copy()
+        vehicle_copy.update({ATTR_ENTITY_ID: self.entity_id})
+        self.hass.bus.fire(EVENT_VEHICLE_DETECTED, vehicle_copy)
 
     @property
     def camera_entity(self):
@@ -121,6 +131,6 @@ class PlateRecognizerEntity(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return the attributes."""
         attr = {}
-        attr.update({"last_plate": self._last_detection})
-        attr.update({"plates": self._plates})
+        attr.update({"last_detection": self._last_detection})
+        attr.update({"vehicles": self._vehicles})
         return attr
