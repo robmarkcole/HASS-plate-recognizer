@@ -85,7 +85,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                     ATTR_REGION_CODE: r["region"]["code"],
                     ATTR_VEHICLE_TYPE: r["vehicle"]["type"],
                 }
-                for r in results
+                for r in self._results
             ]
         except Exception as exc:
             _LOGGER.error("platerecognizer error : %s", exc)
@@ -98,8 +98,9 @@ class PlateRecognizerEntity(ImageProcessingEntity):
 
     def fire_vehicle_detected_event(self, vehicle):
         """Send event."""
-        vehicle.update({ATTR_ENTITY_ID: self.entity_id})
-        self.hass.bus.fire(EVENT_VEHICLE_DETECTED, vehicle)
+        vehicle_copy = vehicle.copy()
+        vehicle_copy.update({ATTR_ENTITY_ID: self.entity_id})
+        self.hass.bus.fire(EVENT_VEHICLE_DETECTED, vehicle_copy)
 
     @property
     def camera_entity(self):
