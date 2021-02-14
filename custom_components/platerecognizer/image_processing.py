@@ -103,8 +103,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
     def get_statistics(self):
         try:
             response = requests.get(STATS_URL, headers=self._headers).json()
-            calls_remaning = response['total_calls'] - response['usage']['calls']
-            response.update({'calls_remaning': calls_remaning})
+            calls_remaining = response['total_calls'] - response['usage']['calls']
+            response.update({'calls_remaining': calls_remaining})
             self._statistics = response.copy()
         except Exception as exc:
             _LOGGER.error("platerecognizer error getting statistics: %s", exc)
