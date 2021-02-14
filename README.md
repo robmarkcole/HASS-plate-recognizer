@@ -12,10 +12,19 @@ Place the `custom_components` folder in your configuration directory (or add its
 image_processing:
   - platform: platerecognizer
     api_token: your_token
+    save_file_folder: /config/images/platerecognizer/
+    save_timestamped_file: True
+    always_save_latest_jpg: True
     source:
       - entity_id: camera.yours
 ```
 
+Configuration variables:
+- **api_key**: Your api key.
+- **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
+- **save_timestamped_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Save the processed image with the time of detection in the filename.
+- **always_save_latest_jpg**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
+- **source**: Must be a camera.
 
 ## Development
 Currently only the helper functions are tested, using pytest.
