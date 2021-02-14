@@ -18,6 +18,7 @@ import homeassistant.util.dt as dt_util
 _LOGGER = logging.getLogger(__name__)
 
 PLATE_READER_URL = "https://api.platerecognizer.com/v1/plate-reader/"
+STATS_URL = 'https://api.platerecognizer.com/v1/statistics/'
 
 EVENT_VEHICLE_DETECTED = "platerecognizer.vehicle_detected"
 
@@ -68,7 +69,9 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._statistics = {}
         self._last_detection = None
+        self.get_statistics()
 
     def process_image(self, image):
         """Process an image."""
@@ -88,13 +91,23 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                 for r in self._results
             ]
         except Exception as exc:
-            _LOGGER.error("platerecognizer error : %s", exc)
+            _LOGGER.error("platerecognizer error processing image: %s", exc)
 
         self._state = len(self._vehicles)
         if self._state > 0:
             self._last_detection = dt_util.now().strftime(DATETIME_FORMAT)
             for vehicle in self._vehicles:
                 self.fire_vehicle_detected_event(vehicle)
+        self.get_statistics()
+
+    def get_statistics(self):
+        try:
+            response = requests.get(STATS_URL, headers=self._headers).json()
+            calls_remaning = response['total_calls'] - response['usage']['calls']
+            response.update({'calls_remaning': calls_remaning})
+            self._statistics = response.copy()
+        except Exception as exc:
+            _LOGGER.error("platerecognizer error getting statistics: %s", exc)
 
     def fire_vehicle_detected_event(self, vehicle):
         """Send event."""
@@ -133,4 +146,5 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr = {}
         attr.update({"last_detection": self._last_detection})
         attr.update({"vehicles": self._vehicles})
+        attr.update({"statistics": self._statistics})
         return attr
