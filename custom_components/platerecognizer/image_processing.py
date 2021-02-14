@@ -3,8 +3,9 @@ import logging
 import requests
 import voluptuous as vol
 import re
+import io
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, UnidentifiedImageError
 from pathlib import Path
 
 from homeassistant.components.image_processing import (
@@ -129,6 +130,9 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             self._last_detection = dt_util.now().strftime(DATETIME_FORMAT)
             for vehicle in self._vehicles:
                 self.fire_vehicle_detected_event(vehicle)
+        if self._save_file_folder:
+            if self._state > 0 or self._always_save_latest_jpg:
+                self.save_image(image)
         self.get_statistics()
 
     def get_statistics(self):
@@ -145,6 +149,26 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         vehicle_copy = vehicle.copy()
         vehicle_copy.update({ATTR_ENTITY_ID: self.entity_id})
         self.hass.bus.fire(EVENT_VEHICLE_DETECTED, vehicle_copy)
+
+    def save_image(self, image):
+        """Save a timestamped image with bounding boxes around plates."""
+        try:
+            img = Image.open(io.BytesIO(bytearray(image))).convert("RGB")
+        except UnidentifiedImageError:
+            _LOGGER.warning("platerecognizer unable to save image, bad data")
+            return
+        draw = ImageDraw.Draw(img)
+
+        for vehicle in self._vehicles:
+            pass
+
+        latest_save_path = self._save_file_folder / f"{self._name}_latest.png"
+        img.save(latest_save_path)
+
+        if self._save_timestamped_file:
+            timestamp_save_path = self._save_file_folder / f"{self._name}_{self._last_detection}.png"
+            img.save(timestamp_save_path)
+            _LOGGER.info("platerecognizer saved file %s", timestamp_save_path)
 
     @property
     def camera_entity(self):
