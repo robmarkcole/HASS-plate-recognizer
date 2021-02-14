@@ -103,12 +103,17 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._vehicles = [{}]
         self._statistics = {}
         self._last_detection = None
+        self._image_width = None
+        self._image_height = None
+        self._image = None
         self.get_statistics()
 
     def process_image(self, image):
         """Process an image."""
         self._results = {}
         self._vehicles = [{}]
+        self._image = Image.open(io.BytesIO(bytearray(image)))
+        self._image_width, self._image_height = self._image.size
         try:
             self._results = requests.post(
                 PLATE_READER_URL, files={"upload": image}, headers=self._headers
@@ -132,7 +137,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                 self.fire_vehicle_detected_event(vehicle)
         if self._save_file_folder:
             if self._state > 0 or self._always_save_latest_jpg:
-                self.save_image(image)
+                self.save_image()
         self.get_statistics()
 
     def get_statistics(self):
@@ -150,24 +155,34 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         vehicle_copy.update({ATTR_ENTITY_ID: self.entity_id})
         self.hass.bus.fire(EVENT_VEHICLE_DETECTED, vehicle_copy)
 
-    def save_image(self, image):
+    def save_image(self):
         """Save a timestamped image with bounding boxes around plates."""
-        try:
-            img = Image.open(io.BytesIO(bytearray(image))).convert("RGB")
-        except UnidentifiedImageError:
-            _LOGGER.warning("platerecognizer unable to save image, bad data")
-            return
-        draw = ImageDraw.Draw(img)
+        draw = ImageDraw.Draw(self._image)
 
-        for vehicle in self._vehicles:
-            pass
+        decimal_places = 3
+        for vehicle in self._results:
+            box = (
+                    round(vehicle['box']["ymin"] / self._image_height, decimal_places),
+                    round(vehicle['box']["xmin"] / self._image_width, decimal_places),
+                    round(vehicle['box']["ymax"] / self._image_height, decimal_places),
+                    round(vehicle['box']["xmax"] / self._image_width, decimal_places),
+            )
+            text = vehicle['plate']
+            draw_box(
+                draw,
+                box,
+                self._image_width,
+                self._image_height,
+                text=text,
+                color=RED,
+                )
 
         latest_save_path = self._save_file_folder / f"{self._name}_latest.png"
-        img.save(latest_save_path)
+        self._image.save(latest_save_path)
 
         if self._save_timestamped_file:
             timestamp_save_path = self._save_file_folder / f"{self._name}_{self._last_detection}.png"
-            img.save(timestamp_save_path)
+            self._image.save(timestamp_save_path)
             _LOGGER.info("platerecognizer saved file %s", timestamp_save_path)
 
     @property
