@@ -34,16 +34,21 @@ ATTR_REGION_CODE = "region_code"
 ATTR_VEHICLE_TYPE = "vehicle_type"
 
 CONF_API_TOKEN = "api_token"
+CONF_REGIONS = "regions"
 CONF_SAVE_FILE_FOLDER = "save_file_folder"
 CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
 CONF_ALWAYS_SAVE_LATEST_JPG = "always_save_latest_jpg"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 RED = (255, 0, 0)  # For objects within the ROI
+DEFAULT_REGIONS = ['None']
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_API_TOKEN): cv.string,
+        vol.Optional(CONF_REGIONS, default=DEFAULT_REGIONS): vol.All(
+            cv.ensure_list, [cv.string]
+        ),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
         vol.Optional(CONF_ALWAYS_SAVE_LATEST_JPG, default=False): cv.boolean,
@@ -65,6 +70,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for camera in config[CONF_SOURCE]:
         platerecognizer = PlateRecognizerEntity(
             api_token=config.get(CONF_API_TOKEN),
+            regions = config.get(CONF_REGIONS),
             save_file_folder=save_file_folder,
             save_timestamped_file=config.get(CONF_SAVE_TIMESTAMPTED_FILE),
             always_save_latest_jpg=config.get(CONF_ALWAYS_SAVE_LATEST_JPG),
@@ -81,6 +87,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
     def __init__(
         self,
         api_token,
+        regions,
         save_file_folder,
         save_timestamped_file,
         always_save_latest_jpg,
@@ -89,6 +96,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
     ):
         """Init."""
         self._headers = {"Authorization": f"Token {api_token}"}
+        self._regions = regions
         self._camera = camera_entity
         if name:
             self._name = name
@@ -114,10 +122,18 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._vehicles = [{}]
         self._image = Image.open(io.BytesIO(bytearray(image)))
         self._image_width, self._image_height = self._image.size
+        if self._regions == DEFAULT_REGIONS:
+            regions = None
+        else:
+            regions = self._regions
         try:
-            self._results = requests.post(
-                PLATE_READER_URL, files={"upload": image}, headers=self._headers
-            ).json()["results"]
+            response = requests.post(
+                PLATE_READER_URL, 
+                data=dict(regions=regions),  
+                files={"upload": image}, 
+                headers=self._headers
+            ).json()
+            self._results = response["results"]
             self._vehicles = [
                 {
                     ATTR_PLATE: r["plate"],
@@ -128,7 +144,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                 for r in self._results
             ]
         except Exception as exc:
-            _LOGGER.error("platerecognizer error processing image: %s", exc)
+            _LOGGER.error("platerecognizer error: %s", exc)
+            _LOGGER.error(f"platerecognizer api response: {response}")
 
         self._state = len(self._vehicles)
         if self._state > 0:
@@ -217,6 +234,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr.update({"last_detection": self._last_detection})
         attr.update({"vehicles": self._vehicles})
         attr.update({"statistics": self._statistics})
+        if self._regions != DEFAULT_REGIONS:
+            attr[CONF_REGIONS] = self._regions
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
             attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file

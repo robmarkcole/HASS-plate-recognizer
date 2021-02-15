@@ -2,7 +2,7 @@
         "domain": "platerecognizer",
         "name": "platerecognizer custom integration",
         "documentation": "https://github.com/robmarkcole/HASS-plate-recognizer",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "requirements": ["pillow", "requests"],
         "dependencies": [],
         "codeowners": [
