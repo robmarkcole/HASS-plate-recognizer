@@ -27,15 +27,15 @@ Configuration variables:
 - **source**: Must be a camera.
 
 <p align="center">
-<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/main.png" width="700">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/card.png" width="400">
 </p>
 
 <p align="center">
-<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/card.png" width="700">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/main.png" width="800">
 </p>
 
 <p align="center">
-<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/event.png" width="700">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/event.png" width="800">
 </p>
 ## Development
 Currently only the helper functions are tested, using pytest.
