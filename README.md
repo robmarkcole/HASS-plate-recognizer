@@ -37,8 +37,3 @@ Configuration variables:
 <p align="center">
 <img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/event.png" width="800">
 </p>
-## Development
-Currently only the helper functions are tested, using pytest.
-* `python3 -m venv venv`
-* `source venv/bin/activate`
-* `pip3 install -r requirements.txt`
