@@ -26,8 +26,14 @@ Configuration variables:
 - **always_save_latest_jpg**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
 - **source**: Must be a camera.
 
-## Development
-Currently only the helper functions are tested, using pytest.
-* `python3 -m venv venv`
-* `source venv/bin/activate`
-* `pip3 install -r requirements.txt`
+<p align="center">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/card.png" width="400">
+</p>
+
+<p align="center">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/main.png" width="800">
+</p>
+
+<p align="center">
+<img src="https://github.com/robmarkcole/HASS-plate-recognizer/blob/main/docs/event.png" width="800">
+</p>
