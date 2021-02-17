@@ -17,7 +17,7 @@ image_processing:
       - ie
     save_file_folder: /config/images/platerecognizer/
     save_timestamped_file: True
-    always_save_latest_jpg: True
+    always_save_latest_file: True
     source:
       - entity_id: camera.yours
 ```
@@ -27,7 +27,7 @@ Configuration variables:
 - **regions**: (Optional) A list of [regions/countries](http://docs.platerecognizer.com/?python#countries) to filter by. Note this may return fewer, but more specific predictions.
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **save_timestamped_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Save the processed image with the time of detection in the filename.
-- **always_save_latest_jpg**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
+- **always_save_latest_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
 - **source**: Must be a camera.
 
 <p align="center">

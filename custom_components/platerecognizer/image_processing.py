@@ -37,7 +37,7 @@ CONF_API_TOKEN = "api_token"
 CONF_REGIONS = "regions"
 CONF_SAVE_FILE_FOLDER = "save_file_folder"
 CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
-CONF_ALWAYS_SAVE_LATEST_JPG = "always_save_latest_jpg"
+CONF_ALWAYS_SAVE_LATEST_FILE = "always_save_latest_file"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 RED = (255, 0, 0)  # For objects within the ROI
@@ -51,7 +51,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         ),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
-        vol.Optional(CONF_ALWAYS_SAVE_LATEST_JPG, default=False): cv.boolean,
+        vol.Optional(CONF_ALWAYS_SAVE_LATEST_FILE, default=False): cv.boolean,
     }
 )
 
@@ -73,7 +73,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             regions = config.get(CONF_REGIONS),
             save_file_folder=save_file_folder,
             save_timestamped_file=config.get(CONF_SAVE_TIMESTAMPTED_FILE),
-            always_save_latest_jpg=config.get(CONF_ALWAYS_SAVE_LATEST_JPG),
+            always_save_latest_file=config.get(CONF_ALWAYS_SAVE_LATEST_FILE),
             camera_entity=camera[CONF_ENTITY_ID],
             name=camera.get(CONF_NAME),
         )
@@ -90,7 +90,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         regions,
         save_file_folder,
         save_timestamped_file,
-        always_save_latest_jpg,
+        always_save_latest_file,
         camera_entity,
         name,
     ):
@@ -105,7 +105,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             self._name = f"platerecognizer_{camera_name}"
         self._save_file_folder = save_file_folder
         self._save_timestamped_file = save_timestamped_file
-        self._always_save_latest_jpg = always_save_latest_jpg
+        self._always_save_latest_file = always_save_latest_file
         self._state = None
         self._results = {}
         self._vehicles = [{}]
@@ -154,7 +154,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             for vehicle in self._vehicles:
                 self.fire_vehicle_detected_event(vehicle)
         if self._save_file_folder:
-            if self._state > 0 or self._always_save_latest_jpg:
+            if self._state > 0 or self._always_save_latest_file:
                 self.save_image()
         self.get_statistics()
 
@@ -240,5 +240,5 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
             attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
-            attr[CONF_ALWAYS_SAVE_LATEST_JPG] = self._always_save_latest_jpg
+            attr[CONF_ALWAYS_SAVE_LATEST_FILE] = self._always_save_latest_file
         return attr
