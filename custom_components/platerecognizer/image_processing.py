@@ -130,7 +130,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         try:
             response = requests.post(
                 PLATE_READER_URL, 
-                data=dict(regions=regions),  
+                data=dict(regions=regions, camera_id=self.name),  
                 files={"upload": image}, 
                 headers=self._headers
             ).json()
