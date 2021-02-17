@@ -118,6 +118,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
 
     def process_image(self, image):
         """Process an image."""
+        self._state = None
         self._results = {}
         self._vehicles = [{}]
         self._image = Image.open(io.BytesIO(bytearray(image)))
