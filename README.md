@@ -15,6 +15,9 @@ image_processing:
     regions:
       - gb
       - ie
+    watched_plates:
+      - kfa8725
+      - kfab726
     save_file_folder: /config/images/platerecognizer/
     save_timestamped_file: True
     always_save_latest_file: True
@@ -25,6 +28,7 @@ image_processing:
 Configuration variables:
 - **api_key**: Your api key.
 - **regions**: (Optional) A list of [regions/countries](http://docs.platerecognizer.com/?python#countries) to filter by. Note this may return fewer, but more specific predictions.
+- **watched_plates**: (Optional) A list of number plates to watch for, which will identify a plate even if a couple of digits are incorrect in the prediction (fuzzy matching). If configured adds an attribute to the entity with a boolean for each watched plate to indicate if it is detected.
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **save_timestamped_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Save the processed image with the time of detection in the filename.
 - **always_save_latest_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
