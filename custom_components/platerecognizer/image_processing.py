@@ -4,6 +4,7 @@ import requests
 import voluptuous as vol
 import re
 import io
+from typing import List, Dict
 
 from PIL import Image, ImageDraw, UnidentifiedImageError
 from pathlib import Path
@@ -38,6 +39,7 @@ CONF_REGIONS = "regions"
 CONF_SAVE_FILE_FOLDER = "save_file_folder"
 CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
 CONF_ALWAYS_SAVE_LATEST_FILE = "always_save_latest_file"
+CONF_WATCHED_PLATES = "watched_plates"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 RED = (255, 0, 0)  # For objects within the ROI
@@ -52,12 +54,24 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
         vol.Optional(CONF_ALWAYS_SAVE_LATEST_FILE, default=False): cv.boolean,
+        vol.Optional(CONF_WATCHED_PLATES): vol.All(
+            cv.ensure_list, [cv.string]
+        ),
     }
 )
 
-# def get_valid_filename(name: str) -> str:
-#     return re.sub(r"(?u)[^-\w.]", "", str(name).strip().replace(" ", "_"))
-
+def get_plates(results : List[Dict]) -> List[str]:
+    """
+    Return the list of candidate plates. 
+    If no plates empty list returned.
+    """
+    plates = []
+    candidates = [result['candidates'] for result in results]
+    for candidate in candidates:
+        cand_plates = [cand['plate'] for cand in candidate]
+        for plate in cand_plates:
+            plates.append(plate)
+    return list(set(plates))
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the platform."""
@@ -74,6 +88,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             save_file_folder=save_file_folder,
             save_timestamped_file=config.get(CONF_SAVE_TIMESTAMPTED_FILE),
             always_save_latest_file=config.get(CONF_ALWAYS_SAVE_LATEST_FILE),
+            watched_plates=config.get(CONF_WATCHED_PLATES),
             camera_entity=camera[CONF_ENTITY_ID],
             name=camera.get(CONF_NAME),
         )
@@ -91,6 +106,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         save_file_folder,
         save_timestamped_file,
         always_save_latest_file,
+        watched_plates,
         camera_entity,
         name,
     ):
@@ -106,9 +122,11 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._save_file_folder = save_file_folder
         self._save_timestamped_file = save_timestamped_file
         self._always_save_latest_file = always_save_latest_file
+        self._watched_plates = watched_plates
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._plates = []
         self._statistics = {}
         self._last_detection = None
         self._image_width = None
@@ -121,6 +139,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._plates = []
         self._image = Image.open(io.BytesIO(bytearray(image)))
         self._image_width, self._image_height = self._image.size
         if self._regions == DEFAULT_REGIONS:
@@ -135,6 +154,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                 headers=self._headers
             ).json()
             self._results = response["results"]
+            self._plates = get_plates(response['results'])
             self._vehicles = [
                 {
                     ATTR_PLATE: r["plate"],
@@ -234,6 +254,12 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr = {}
         attr.update({"last_detection": self._last_detection})
         attr.update({"vehicles": self._vehicles})
+        if self._watched_plates:
+            watched_plates_results = {plate : False for plate in self._watched_plates}
+            for plate in self._watched_plates:
+                if plate in self._plates:
+                    watched_plates_results.update({plate: True})
+            attr[CONF_WATCHED_PLATES] = watched_plates_results
         attr.update({"statistics": self._statistics})
         if self._regions != DEFAULT_REGIONS:
             attr[CONF_REGIONS] = self._regions
