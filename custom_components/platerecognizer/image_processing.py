@@ -4,6 +4,7 @@ import requests
 import voluptuous as vol
 import re
 import io
+from typing import List, Dict
 
 from PIL import Image, ImageDraw, UnidentifiedImageError
 from pathlib import Path
@@ -59,6 +60,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+def get_plates(results : List[Dict]) -> List[str]:
+    """
+    Return the list of candidate plates. 
+    If no plates empty list returned.
+    """
+    plates = []
+    candidates = [result['candidates'] for result in results]
+    for candidate in candidates:
+        cand_plates = [cand['plate'] for cand in candidate]
+        for plate in cand_plates:
+            plates.append(plate)
+    return list(set(plates))
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the platform."""
@@ -113,6 +126,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._plates = []
         self._statistics = {}
         self._last_detection = None
         self._image_width = None
@@ -125,6 +139,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._plates = []
         self._image = Image.open(io.BytesIO(bytearray(image)))
         self._image_width, self._image_height = self._image.size
         if self._regions == DEFAULT_REGIONS:
@@ -139,6 +154,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                 headers=self._headers
             ).json()
             self._results = response["results"]
+            self._plates = get_plates(response['results'])
             self._vehicles = [
                 {
                     ATTR_PLATE: r["plate"],
@@ -238,6 +254,12 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr = {}
         attr.update({"last_detection": self._last_detection})
         attr.update({"vehicles": self._vehicles})
+        if self._watched_plates:
+            watched_plates_results = {plate : False for plate in self._watched_plates}
+            for plate in self._watched_plates:
+                if plate in self._plates:
+                    watched_plates_results.update({plate: True})
+            attr[CONF_WATCHED_PLATES] = watched_plates_results
         attr.update({"statistics": self._statistics})
         if self._regions != DEFAULT_REGIONS:
             attr[CONF_REGIONS] = self._regions
@@ -245,6 +267,4 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
             attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
             attr[CONF_ALWAYS_SAVE_LATEST_FILE] = self._always_save_latest_file
-        if self._watched_plates:
-            attr[CONF_WATCHED_PLATES] = self._watched_plates
         return attr
