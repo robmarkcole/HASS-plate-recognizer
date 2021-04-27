@@ -3,6 +3,8 @@ Read vehicle license plates with https://platerecognizer.com/ which offers free 
 
 This integration adds an image processing entity where the state of the entity is the number of license plates found in a processed image. Information about the vehicle which has the license plate is provided in the entity attributes, and includes the license plate number, [region/country](http://docs.platerecognizer.com/#countries), vehicle type, and confidence (in a scale 0 to 1) in this prediction. For each vehicle an `platerecognizer.vehicle_detected` event is fired, containing the same information just listed. Additionally, statistics about your account usage are given in the `Statistics` attribute, including the number of `calls_remaining` out of your 2500 monthly available.
 
+If you have a paid plan that includes MMC (Make/Model/Colour) data you can received the orientation of the vehicle in the entity attributes.
+
 **Note** this integration does NOT automatically process images, it is necessary to call the `image_processing.scan` service to trigger processing.
 
 ## Home Assistant setup
@@ -21,6 +23,7 @@ image_processing:
     save_file_folder: /config/images/platerecognizer/
     save_timestamped_file: True
     always_save_latest_file: True
+    mmc: True
     source:
       - entity_id: camera.yours
 ```
@@ -32,6 +35,7 @@ Configuration variables:
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **save_timestamped_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Save the processed image with the time of detection in the filename.
 - **always_save_latest_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Always save the last processed image, no matter there were detections or not.
+- **mmc**: (Optional, default `False`, requires a [paid plan](https://platerecognizer.com/pricing/) with the MMC (Make, Model, Colour) feature enabled.)  If enabled returns the orientation of the vehicle as a separate attribute containing Front/Rear/Unknown.
 - **source**: Must be a camera.
 
 <p align="center">
