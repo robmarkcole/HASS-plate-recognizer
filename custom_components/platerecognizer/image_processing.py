@@ -33,6 +33,7 @@ ATTR_PLATE = "plate"
 ATTR_CONFIDENCE = "confidence"
 ATTR_REGION_CODE = "region_code"
 ATTR_VEHICLE_TYPE = "vehicle_type"
+ATTR_ORIENTATION = "orientation"
 
 CONF_API_TOKEN = "api_token"
 CONF_REGIONS = "regions"
@@ -40,6 +41,7 @@ CONF_SAVE_FILE_FOLDER = "save_file_folder"
 CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
 CONF_ALWAYS_SAVE_LATEST_FILE = "always_save_latest_file"
 CONF_WATCHED_PLATES = "watched_plates"
+CONF_MMC = "mmc"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 RED = (255, 0, 0)  # For objects within the ROI
@@ -51,6 +53,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_REGIONS, default=DEFAULT_REGIONS): vol.All(
             cv.ensure_list, [cv.string]
         ),
+        vol.Optional(CONF_MMC, default=False): cv.boolean,
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
         vol.Optional(CONF_ALWAYS_SAVE_LATEST_FILE, default=False): cv.boolean,
@@ -73,6 +76,23 @@ def get_plates(results : List[Dict]) -> List[str]:
             plates.append(plate)
     return list(set(plates))
 
+def get_orientations(results : List[Dict]) -> List[str]:
+    """
+    Return the list of candidate orientations. 
+    If no orientations empty list returned.
+    """
+    try:
+        orientations = []
+        candidates = [result['orientation'] for result in results]
+        for candidate in candidates:
+            for cand in candidate:
+                _LOGGER.debug("get_orientations cand: %s", cand)
+                if cand["score"] >= 0.7:
+                    orientations.append(cand["orientation"])
+        return list(set(orientations))
+    except Exception as exc:
+        _LOGGER.error("get_orientations error: %s", exc)
+
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the platform."""
     # Validate credentials by processing image.
@@ -91,6 +111,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             watched_plates=config.get(CONF_WATCHED_PLATES),
             camera_entity=camera[CONF_ENTITY_ID],
             name=camera.get(CONF_NAME),
+            mmc=config.get(CONF_MMC),
         )
         entities.append(platerecognizer)
     add_entities(entities)
@@ -109,6 +130,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         watched_plates,
         camera_entity,
         name,
+        mmc,
     ):
         """Init."""
         self._headers = {"Authorization": f"Token {api_token}"}
@@ -123,9 +145,11 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._save_timestamped_file = save_timestamped_file
         self._always_save_latest_file = always_save_latest_file
         self._watched_plates = watched_plates
+        self._mmc = mmc
         self._state = None
         self._results = {}
         self._vehicles = [{}]
+        self._orientations = []
         self._plates = []
         self._statistics = {}
         self._last_detection = None
@@ -140,6 +164,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._results = {}
         self._vehicles = [{}]
         self._plates = []
+        self._orientations = []
         self._image = Image.open(io.BytesIO(bytearray(image)))
         self._image_width, self._image_height = self._image.size
         if self._regions == DEFAULT_REGIONS:
@@ -149,12 +174,13 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         try:
             response = requests.post(
                 PLATE_READER_URL, 
-                data=dict(regions=regions, camera_id=self.name),  
+                data=dict(regions=regions, camera_id=self.name, mmc=self._mmc),  
                 files={"upload": image}, 
                 headers=self._headers
             ).json()
             self._results = response["results"]
             self._plates = get_plates(response['results'])
+            self._orientations = get_orientations(response['results'])
             self._vehicles = [
                 {
                     ATTR_PLATE: r["plate"],
@@ -254,6 +280,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr = {}
         attr.update({"last_detection": self._last_detection})
         attr.update({"vehicles": self._vehicles})
+        attr.update({ATTR_ORIENTATION: self._orientations})
         if self._watched_plates:
             watched_plates_results = {plate : False for plate in self._watched_plates}
             for plate in self._watched_plates:
