@@ -5,6 +5,7 @@ import voluptuous as vol
 import re
 import io
 from typing import List, Dict
+import json
 
 from PIL import Image, ImageDraw, UnidentifiedImageError
 from pathlib import Path
@@ -42,6 +43,9 @@ CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
 CONF_ALWAYS_SAVE_LATEST_FILE = "always_save_latest_file"
 CONF_WATCHED_PLATES = "watched_plates"
 CONF_MMC = "mmc"
+CONF_SERVER = "server"
+CONF_DETECTION_RULE = "detection_rule"
+CONF_REGION_STRICT = "region"
 
 DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 RED = (255, 0, 0)  # For objects within the ROI
@@ -60,6 +64,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_WATCHED_PLATES): vol.All(
             cv.ensure_list, [cv.string]
         ),
+        vol.Optional(CONF_SERVER, default=PLATE_READER_URL): cv.string,
+        vol.Optional(CONF_DETECTION_RULE, default=False): cv.string,
+        vol.Optional(CONF_REGION_STRICT, default=False): cv.string,
     }
 )
 
@@ -112,6 +119,10 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             camera_entity=camera[CONF_ENTITY_ID],
             name=camera.get(CONF_NAME),
             mmc=config.get(CONF_MMC),
+            server=config.get(CONF_SERVER),
+            detection_rule = config.get(CONF_DETECTION_RULE),
+            region_strict = config.get(CONF_REGION_STRICT),
+
         )
         entities.append(platerecognizer)
     add_entities(entities)
@@ -131,6 +142,9 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         camera_entity,
         name,
         mmc,
+        server,
+        detection_rule,
+        region_strict,
     ):
         """Init."""
         self._headers = {"Authorization": f"Token {api_token}"}
@@ -146,6 +160,9 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._always_save_latest_file = always_save_latest_file
         self._watched_plates = watched_plates
         self._mmc = mmc
+        self._server = server
+        self._detection_rule = detection_rule
+        self._region_strict = region_strict
         self._state = None
         self._results = {}
         self._vehicles = [{}]
@@ -156,6 +173,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._image_width = None
         self._image_height = None
         self._image = None
+        self._config = {}
         self.get_statistics()
 
     def process_image(self, image):
@@ -167,14 +185,20 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         self._orientations = []
         self._image = Image.open(io.BytesIO(bytearray(image)))
         self._image_width, self._image_height = self._image.size
+        
         if self._regions == DEFAULT_REGIONS:
             regions = None
         else:
             regions = self._regions
+        if self._detection_rule:
+            self._config.update({"detection_rule" : self._detection_rule})
+        if self._region_strict:
+            self._config.update({"region": self._region_strict})
         try:
+            _LOGGER.debug("Config: " + str(json.dumps(self._config)))
             response = requests.post(
-                PLATE_READER_URL, 
-                data=dict(regions=regions, camera_id=self.name, mmc=self._mmc),  
+                self._server, 
+                data=dict(regions=regions, camera_id=self.name, mmc=self._mmc, config=json.dumps(self._config)),  
                 files={"upload": image}, 
                 headers=self._headers
             ).json()
@@ -202,7 +226,13 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         if self._save_file_folder:
             if self._state > 0 or self._always_save_latest_file:
                 self.save_image()
-        self.get_statistics()
+        if self._server == PLATE_READER_URL:
+            self.get_statistics()
+        else:
+            stats = response["usage"]
+            calls_remaining = stats["max_calls"] - stats["calls"]
+            stats.update({"calls_remaining": calls_remaining})
+            self._statistics = stats
 
     def get_statistics(self):
         try:
@@ -290,6 +320,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         attr.update({"statistics": self._statistics})
         if self._regions != DEFAULT_REGIONS:
             attr[CONF_REGIONS] = self._regions
+        if self._server != PLATE_READER_URL:
+            attr[CONF_SERVER] = str(self._server)
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
             attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
