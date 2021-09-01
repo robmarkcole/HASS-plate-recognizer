@@ -204,7 +204,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             ).json()
             self._results = response["results"]
             self._plates = get_plates(response['results'])
-            self._orientations = get_orientations(response['results'])
+            if self._mmc:
+                self._orientations = get_orientations(response['results'])
             self._vehicles = [
                 {
                     ATTR_PLATE: r["plate"],
