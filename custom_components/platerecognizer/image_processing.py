@@ -35,6 +35,8 @@ ATTR_CONFIDENCE = "confidence"
 ATTR_REGION_CODE = "region_code"
 ATTR_VEHICLE_TYPE = "vehicle_type"
 ATTR_ORIENTATION = "orientation"
+ATTR_BOX_Y_CENTRE = "box_y_centre"
+ATTR_BOX_X_CENTRE = "box_x_centre"
 
 CONF_API_TOKEN = "api_token"
 CONF_REGIONS = "regions"
@@ -212,6 +214,8 @@ class PlateRecognizerEntity(ImageProcessingEntity):
                     ATTR_CONFIDENCE: r["score"],
                     ATTR_REGION_CODE: r["region"]["code"],
                     ATTR_VEHICLE_TYPE: r["vehicle"]["type"],
+                    ATTR_BOX_Y_CENTRE: (r["box"]["ymin"] + ((r["box"]["ymax"] - r["box"]["ymin"]) /2)),
+                    ATTR_BOX_X_CENTRE: (r["box"]["xmin"] + ((r["box"]["xmax"] - r["box"]["xmin"]) /2)),
                 }
                 for r in self._results
             ]
