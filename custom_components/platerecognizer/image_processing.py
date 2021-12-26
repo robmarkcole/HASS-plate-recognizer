@@ -310,7 +310,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
         return ATTR_PLATE
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the attributes."""
         attr = {}
         attr.update({"last_detection": self._last_detection})
