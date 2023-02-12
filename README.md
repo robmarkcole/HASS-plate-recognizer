@@ -75,6 +75,17 @@ sensor:
         value_template: "{{ state_attr('image_processing.platerecognizer_1', 'watched_plates').kbw46ba }}"
 ```
 
+Depending on your license plate, you may recieve an template error due to variables not being able to start with a number. if so, here is another method to create the template sensor:
+```yaml
+sensor:
+  - platform: template
+    sensors:
+      plate_recognizer:
+        friendly_name: "kbw46ba"
+        value_template: "{{ state_attr("image_processing.platerecognizer_1", "watched_plates")["kbw46ba"] }}"
+```
+
+
 ## Video of usage
 Checkout this excellent video of usage from [Everything Smart Home](https://www.youtube.com/channel/UCrVLgIniVg6jW38uVqDRIiQ)
 
