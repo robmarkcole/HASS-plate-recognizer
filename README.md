@@ -35,6 +35,7 @@ image_processing:
     source:
       - entity_id: camera.yours
 ```
+Then, **restart** your Home Assistant
 
 Configuration variables:
 - **api_key**: Your api key.
