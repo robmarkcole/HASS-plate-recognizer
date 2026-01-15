@@ -156,7 +156,7 @@ class PlateRecognizerEntity(ImageProcessingEntity):
             self._name = name
         else:
             camera_name = split_entity_id(camera_entity)[1]
-            self._name = f"platerecognizer_{camera_name}"
+            self._name = f"Plate Recognizer {camera_name.replace('_', ' ').capitalize()}"
         self._save_file_folder = save_file_folder
         self._save_timestamped_file = save_timestamped_file
         self._always_save_latest_file = always_save_latest_file
@@ -308,6 +308,11 @@ class PlateRecognizerEntity(ImageProcessingEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return ATTR_PLATE
+    
+    @property
+    def unique_id(self):
+        """Return a unique ID."""
+        return f"platerecognizer_{self._camera}"    
 
     @property
     def extra_state_attributes(self):
