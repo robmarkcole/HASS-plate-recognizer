@@ -1,6 +1,8 @@
 # HASS-plate-recognizer
 Read vehicle license plates with [Plate Recognizer ALPR](https://platerecognizer.com/) which offers free processing of 2500 images per month. You will need to create an account and get your API token.
 
+> Looking for a modern, UI-configured integration? [zubir2k/homeassistant-platerecognizer](https://github.com/zubir2k/homeassistant-platerecognizer) is a separate implementation built on Home Assistant config entries, providing UI setup, a scan button, sensors, an annotated image, a watchlist, and support for both the cloud API and local SDK.
+
 This integration adds an image processing entity where the state of the entity is the number of license plates found in a processed image. Information about the vehicle which has the license plate is provided in the entity attributes, and includes the license plate number, [region/country](http://docs.platerecognizer.com/#countries), vehicle type, and confidence (in a scale 0 to 1) in this prediction. For each vehicle an `platerecognizer.vehicle_detected` event is fired, containing the same information just listed. Additionally, statistics about your account usage are given in the `Statistics` attribute, including the number of `calls_remaining` out of your 2500 monthly available.
 
 If you have a paid plan that includes MMC (Make/Model/Colour) data you can received the orientation of the vehicle in the entity attributes.
