@@ -1,4 +1,31 @@
 # HASS-plate-recognizer
+
+## Recommended for local camera detection: mqtt-camera-streamer
+
+For local license-plate recognition and camera detections in Home Assistant,
+start with [mqtt-camera-streamer](https://github.com/robmarkcole/mqtt-camera-streamer).
+It keeps the setup simple: configure an MQTT broker and a USB webcam or RTSP
+source, then run one headless Python process on hardware you already have.
+It uses few dependencies, runs CPU-only ONNX inference without PyTorch, and has
+been tested on a Raspberry Pi 4. No Plate Recognizer account, API token or
+cloud processing is required.
+
+It combines person/vehicle detection, Roboflow tracking, configurable presence
+holds, optional local plate recognition and exact watched-plate aliases.
+Home Assistant's built-in MQTT integration discovers snapshot cameras, counts,
+presence sensors, plate readings and vehicle events. Automations can react once
+when a person becomes present or presence clears, rather than on every frame;
+confirmed plate and watchlist events also avoid repeated triggers. Annotated
+MQTT snapshots are the default, with RTSP and local recording optional.
+
+See the [project README and quick start](https://github.com/robmarkcole/mqtt-camera-streamer#readme)
+for setup, dashboard screenshots, Raspberry Pi instructions and benchmark results.
+This is a separate application, not a drop-in replacement for this integration's
+configuration or events. Its local models do not infer region/country,
+make/model/colour or orientation; those features here depend on Plate Recognizer.
+
+## About this integration
+
 Read vehicle license plates with [Plate Recognizer ALPR](https://platerecognizer.com/) which offers free processing of 2500 images per month. You will need to create an account and get your API token.
 
 > Looking for a modern, UI-configured integration? [zubir2k/homeassistant-platerecognizer](https://github.com/zubir2k/homeassistant-platerecognizer) is a separate implementation built on Home Assistant config entries, providing UI setup, a scan button, sensors, an annotated image, a watchlist, and support for both the cloud API and local SDK.
